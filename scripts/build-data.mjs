@@ -1,4 +1,4 @@
-/ =============================================================
+// =============================================================
 // build-data.mjs
 // Reads every data/Enrollment_*.xlsx file and regenerates
 // src/lib/seedData.js (the data the dashboard displays).
