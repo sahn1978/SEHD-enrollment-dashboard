@@ -5,8 +5,9 @@
   "type": "module",
   "description": "Longitudinal enrollment tracking dashboard with biweekly snapshot ingestion, melt detection, and trend analysis.",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "node scripts/build-data.mjs && vite",
+    "data": "node scripts/build-data.mjs",
+    "build": "node scripts/build-data.mjs && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
