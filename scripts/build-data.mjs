@@ -1,4 +1,4 @@
-// =============================================================
+/ =============================================================
 // build-data.mjs
 // Reads every data/Enrollment_*.xlsx file and regenerates
 // src/lib/seedData.js (the data the dashboard displays).
@@ -15,7 +15,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import * as XLSX from 'xlsx';
+import * as XLSXns from 'xlsx';
+const XLSX = XLSXns.default ?? XLSXns; // robust across Node ESM interop
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
@@ -84,7 +85,15 @@ if (files.length === 0) {
   process.exit(1);
 }
 
-const snapshots = files.map(f => parseWorkbook(path.join(dataDir, f), f));
+let snapshots;
+try {
+  snapshots = files.map(f => parseWorkbook(path.join(dataDir, f), f));
+} catch (err) {
+  console.error('\n[build-data] FAILED while reading Excel files:');
+  console.error('  ' + err.message);
+  console.error('Check that the file is a valid .xlsx and matches the standard template.\n');
+  process.exit(1);
+}
 snapshots.sort((a, b) => a.date.localeCompare(b.date));
 
 // ---- build a global target table from every file that recorded targets ----
