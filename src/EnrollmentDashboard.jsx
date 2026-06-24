@@ -198,43 +198,16 @@ export default function EnrollmentDashboard() {
   useEffect(() => {
     let cancelled = false;
     async function init() {
+      // The data/ folder is the single source of truth. scripts/build-data.mjs
+      // converts every data/Enrollment_*.xlsx file into INITIAL_SNAPSHOTS at
+      // build time, so whatever is in the data folder is exactly what every
+      // visitor sees. No browser storage merge, so there is no per-device drift.
       try {
-        const storageData = [];
+        const loaded = [...INITIAL_SNAPSHOTS].sort((a, b) => a.date.localeCompare(b.date));
         let storageWorks = false;
-        try {
-          const result = await storage.list('snapshot:');
-          storageWorks = true;
-          if (result?.keys?.length > 0) {
-            for (const key of result.keys) {
-              try {
-                const r = await storage.get(key);
-                if (r?.value) storageData.push(JSON.parse(r.value));
-              } catch (e) { /* skip bad key */ }
-            }
-          }
-        } catch (e) {
-          storageWorks = false;
-        }
-
-        // Merge: initial provides baseline, storage overrides for matching dates
-        const byDate = new Map();
-        for (const s of INITIAL_SNAPSHOTS) byDate.set(s.date, s);
-        for (const s of storageData) byDate.set(s.date, s);
-        const merged = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
-
-        // Persist any new initial-only snapshots back to storage so they
-        // remain available across sessions without needing this merge again.
-        if (storageWorks) {
-          const storedDates = new Set(storageData.map(s => s.date));
-          for (const s of merged) {
-            if (!storedDates.has(s.date)) {
-              try { await storage.set(`snapshot:${s.date}`, JSON.stringify(s)); } catch {}
-            }
-          }
-        }
-
+        try { await storage.list('snapshot:'); storageWorks = true; } catch (e) { storageWorks = false; }
         if (!cancelled) {
-          setSnapshots(merged);
+          setSnapshots(loaded);
           setStorageReady(storageWorks);
         }
       } catch (e) {
@@ -952,7 +925,7 @@ export default function EnrollmentDashboard() {
             </span>
           </div>
           <div className="text-stone-400">
-            Data persists in browser storage. Drop new biweekly files anytime to extend the time series.
+            Data comes from the Excel files in the repository data folder. Add a new file there and commit to update the live dashboard for everyone.
           </div>
         </footer>
       </div>
