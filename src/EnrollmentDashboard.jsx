@@ -133,9 +133,16 @@ const fmtShortDate = (s) => {
 // ============================================================
 // Sub components
 // ============================================================
-function StatCard({ label, value, sublabel, accent, icon: Icon }) {
+function StatCard({ label, value, sublabel, accent, icon: Icon, highlight }) {
   return (
-    <div className="bg-white border border-stone-200 p-5 relative overflow-hidden">
+    <div
+      className="border p-5 relative overflow-hidden"
+      style={{
+        background: highlight ? '#EEF2E6' : '#FFFFFF',
+        borderColor: highlight ? accent || '#3D5023' : '#E7E5E4',
+        boxShadow: highlight ? 'inset 0 0 0 1px ' + (accent || '#3D5023') : 'none',
+      }}
+    >
       <div className="absolute top-0 left-0 w-1 h-full" style={{ background: accent || '#1E2A44' }} />
       <div className="flex items-start justify-between mb-3">
         <div className="text-[10px] uppercase tracking-[0.15em] text-stone-500 font-medium">{label}</div>
@@ -154,7 +161,10 @@ function StatCard({ label, value, sublabel, accent, icon: Icon }) {
 }
 
 function VarianceBadge({ value }) {
-  if (value === 0 || value == null) {
+  if (value == null) {
+    return <span className="text-stone-300 text-xs">—</span>;
+  }
+  if (value === 0) {
     return <span className="text-stone-400 text-xs">on target</span>;
   }
   const positive = value > 0;
@@ -493,7 +503,7 @@ export default function EnrollmentDashboard() {
               value={<span className="tabular">{totalRow.matTotal}</span>}
               sublabel={
                 <span>
-                  of <span className="tabular">{totalRow.target}</span> target {' '}
+                  vs <span className="tabular">{totalRow.target}</span> target {' '}
                   <VarianceBadge value={totalRow.variance} />
                 </span>
               }
@@ -506,13 +516,14 @@ export default function EnrollmentDashboard() {
               sublabel={
                 totalRow.enrTotal != null ? (
                   <span>
-                    of <span className="tabular">{totalRow.target}</span> target {' '}
+                    vs <span className="tabular">{totalRow.target}</span> target {' '}
                     <VarianceBadge value={totalRow.varEnr} />
                   </span>
                 ) : 'not tracked this snapshot'
               }
               accent="#3D5023"
               icon={GraduationCap}
+              highlight
             />
             <StatCard
               label="Pending Applicants"
@@ -559,10 +570,11 @@ export default function EnrollmentDashboard() {
                     <th className="px-2 py-2.5 text-right font-medium">Summer</th>
                     <th className="px-2 py-2.5 text-right font-medium">Fall</th>
                     <th className="px-2 py-2.5 text-right font-medium">Matric.</th>
-                    <th className="px-2 py-2.5 text-right font-medium">Enrolled</th>
+                    <th className="px-2 py-2.5 text-right font-semibold" style={{ background: '#EEF2E6', color: '#3D5023' }}>Enrolled</th>
                     <th className="px-2 py-2.5 text-right font-medium">Pending</th>
                     <th className="px-2 py-2.5 text-right font-medium">Target</th>
-                    <th className="px-4 py-2.5 text-right font-medium">Variance</th>
+                    <th className="px-3 py-2.5 text-right font-medium">Matric vs Target</th>
+                    <th className="px-3 py-2.5 text-right font-medium" style={{ color: '#3D5023' }}>Enrolled vs Target</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -577,11 +589,14 @@ export default function EnrollmentDashboard() {
                       <td className="px-2 py-3 text-right tabular text-stone-700">{r.matSummer}</td>
                       <td className="px-2 py-3 text-right tabular text-stone-700">{r.matFall}</td>
                       <td className="px-2 py-3 text-right tabular font-medium text-stone-900">{r.matTotal}</td>
-                      <td className="px-2 py-3 text-right tabular text-stone-700">{r.enrTotal ?? '—'}</td>
+                      <td className="px-2 py-3 text-right tabular font-semibold" style={{ background: '#EEF2E6', color: '#2F4019' }}>{r.enrTotal ?? '—'}</td>
                       <td className="px-2 py-3 text-right tabular text-stone-700">{r.admTotal}</td>
                       <td className="px-2 py-3 text-right tabular text-stone-500">{r.target}</td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-3 py-3 text-right">
                         <VarianceBadge value={r.variance} />
+                      </td>
+                      <td className="px-3 py-3 text-right" style={{ background: '#F6F8F1' }}>
+                        <VarianceBadge value={r.varEnr} />
                       </td>
                     </tr>
                   ))}
@@ -591,10 +606,11 @@ export default function EnrollmentDashboard() {
                       <td className="px-2 py-3 text-right tabular font-medium">{totalRow.matSummer}</td>
                       <td className="px-2 py-3 text-right tabular font-medium">{totalRow.matFall}</td>
                       <td className="px-2 py-3 text-right tabular font-semibold">{totalRow.matTotal}</td>
-                      <td className="px-2 py-3 text-right tabular font-medium">{totalRow.enrTotal ?? '—'}</td>
+                      <td className="px-2 py-3 text-right tabular font-bold" style={{ background: '#E4EBD6', color: '#2F4019' }}>{totalRow.enrTotal ?? '—'}</td>
                       <td className="px-2 py-3 text-right tabular font-medium">{totalRow.admTotal}</td>
                       <td className="px-2 py-3 text-right tabular">{totalRow.target}</td>
-                      <td className="px-4 py-3 text-right"><VarianceBadge value={totalRow.variance} /></td>
+                      <td className="px-3 py-3 text-right"><VarianceBadge value={totalRow.variance} /></td>
+                      <td className="px-3 py-3 text-right" style={{ background: '#F6F8F1' }}><VarianceBadge value={totalRow.varEnr} /></td>
                     </tr>
                   )}
                 </tbody>
