@@ -6,7 +6,7 @@ import {
 import * as XLSX from 'xlsx';
 import {
   Upload, AlertTriangle, TrendingDown, TrendingUp, RotateCcw,
-  FileSpreadsheet, Users, Activity, Database, Trash2, Lock, Unlock
+  FileSpreadsheet, Users, Activity, Database, Trash2, Lock, Unlock, GraduationCap
 } from 'lucide-react';
 import { storage } from './lib/storage.js';
 import { INITIAL_SNAPSHOTS } from './lib/seedData.js';
@@ -487,7 +487,7 @@ export default function EnrollmentDashboard() {
 
         {/* KPI Strip */}
         {totalRow && (
-          <section className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+          <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-8">
             <StatCard
               label="Matriculated"
               value={<span className="tabular">{totalRow.matTotal}</span>}
@@ -499,6 +499,20 @@ export default function EnrollmentDashboard() {
               }
               accent="#1E2A44"
               icon={Users}
+            />
+            <StatCard
+              label="Enrolled"
+              value={<span className="tabular">{totalRow.enrTotal ?? '—'}</span>}
+              sublabel={
+                totalRow.enrTotal != null ? (
+                  <span>
+                    of <span className="tabular">{totalRow.target}</span> target {' '}
+                    <VarianceBadge value={totalRow.varEnr} />
+                  </span>
+                ) : 'not tracked this snapshot'
+              }
+              accent="#3D5023"
+              icon={GraduationCap}
             />
             <StatCard
               label="Pending Applicants"
@@ -545,6 +559,7 @@ export default function EnrollmentDashboard() {
                     <th className="px-2 py-2.5 text-right font-medium">Summer</th>
                     <th className="px-2 py-2.5 text-right font-medium">Fall</th>
                     <th className="px-2 py-2.5 text-right font-medium">Matric.</th>
+                    <th className="px-2 py-2.5 text-right font-medium">Enrolled</th>
                     <th className="px-2 py-2.5 text-right font-medium">Pending</th>
                     <th className="px-2 py-2.5 text-right font-medium">Target</th>
                     <th className="px-4 py-2.5 text-right font-medium">Variance</th>
@@ -562,6 +577,7 @@ export default function EnrollmentDashboard() {
                       <td className="px-2 py-3 text-right tabular text-stone-700">{r.matSummer}</td>
                       <td className="px-2 py-3 text-right tabular text-stone-700">{r.matFall}</td>
                       <td className="px-2 py-3 text-right tabular font-medium text-stone-900">{r.matTotal}</td>
+                      <td className="px-2 py-3 text-right tabular text-stone-700">{r.enrTotal ?? '—'}</td>
                       <td className="px-2 py-3 text-right tabular text-stone-700">{r.admTotal}</td>
                       <td className="px-2 py-3 text-right tabular text-stone-500">{r.target}</td>
                       <td className="px-4 py-3 text-right">
@@ -575,6 +591,7 @@ export default function EnrollmentDashboard() {
                       <td className="px-2 py-3 text-right tabular font-medium">{totalRow.matSummer}</td>
                       <td className="px-2 py-3 text-right tabular font-medium">{totalRow.matFall}</td>
                       <td className="px-2 py-3 text-right tabular font-semibold">{totalRow.matTotal}</td>
+                      <td className="px-2 py-3 text-right tabular font-medium">{totalRow.enrTotal ?? '—'}</td>
                       <td className="px-2 py-3 text-right tabular font-medium">{totalRow.admTotal}</td>
                       <td className="px-2 py-3 text-right tabular">{totalRow.target}</td>
                       <td className="px-4 py-3 text-right"><VarianceBadge value={totalRow.variance} /></td>
@@ -630,6 +647,7 @@ export default function EnrollmentDashboard() {
             <div className="flex items-center gap-1 text-xs">
               {[
                 { key: 'matTotal', label: 'Matriculated' },
+                { key: 'enrTotal', label: 'Enrolled' },
                 { key: 'admTotal', label: 'Pending Applicants' },
                 { key: 'variance', label: 'Variance' },
               ].map(opt => (
