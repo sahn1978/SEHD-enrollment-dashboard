@@ -389,7 +389,7 @@ export default function EnrollmentDashboard() {
     if (!latest) return [];
     return PROGRAM_ORDER.map(p => {
       const r = latest.rows.find(x => x.program === p);
-      return r ? { program: p, variance: r.variance, target: r.target, matriculated: r.matTotal } : null;
+      return r ? { program: p, variance: r.variance, varEnr: r.varEnr, target: r.target, matriculated: r.matTotal, enrolled: r.enrTotal } : null;
     }).filter(Boolean);
   }, [latest]);
 
@@ -624,27 +624,48 @@ export default function EnrollmentDashboard() {
                 <h2 className="display text-lg text-stone-900" style={{ fontFamily: 'Fraunces, Georgia, serif', fontWeight: 500 }}>
                   Variance vs Target
                 </h2>
-                <p className="text-xs text-stone-500 mt-0.5">Latest snapshot</p>
+                <p className="text-xs text-stone-500 mt-0.5">Latest snapshot, by program</p>
               </div>
             </div>
-            <div className="p-3" style={{ height: 340 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={varianceData} layout="vertical" margin={{ top: 10, right: 30, left: 50, bottom: 5 }}>
-                  <CartesianGrid horizontal={false} stroke="#E8E0CC" />
-                  <XAxis type="number" tick={{ fontSize: 10, fill: '#78716C' }} axisLine={{ stroke: '#D4C9B0' }} />
-                  <YAxis type="category" dataKey="program" tick={{ fontSize: 11, fill: '#44403C', fontFamily: 'IBM Plex Sans' }} axisLine={{ stroke: '#D4C9B0' }} width={70} />
-                  <Tooltip
-                    contentStyle={{ background: '#FFFFFF', border: '1px solid #D4C9B0', fontSize: 12 }}
-                    formatter={(v) => [v, 'Variance']}
-                  />
-                  <ReferenceLine x={0} stroke="#1E2A44" strokeWidth={1.5} />
-                  <Bar dataKey="variance" radius={0}>
-                    {varianceData.map((d, i) => (
-                      <Cell key={i} fill={d.variance < 0 ? '#8B2635' : d.variance > 0 ? '#3D5023' : '#78716C'} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+
+            <div className="px-3 pt-3 pb-1">
+              <div className="text-[10px] uppercase tracking-[0.15em] font-medium mb-1" style={{ color: '#1E2A44' }}>From Matriculated</div>
+              <div style={{ height: 215 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={varianceData} layout="vertical" margin={{ top: 4, right: 30, left: 50, bottom: 4 }}>
+                    <CartesianGrid horizontal={false} stroke="#E8E0CC" />
+                    <XAxis type="number" tick={{ fontSize: 10, fill: '#78716C' }} axisLine={{ stroke: '#D4C9B0' }} />
+                    <YAxis type="category" dataKey="program" tick={{ fontSize: 11, fill: '#44403C', fontFamily: 'IBM Plex Sans' }} axisLine={{ stroke: '#D4C9B0' }} width={70} />
+                    <Tooltip contentStyle={{ background: '#FFFFFF', border: '1px solid #D4C9B0', fontSize: 12 }} formatter={(v) => [v, 'Matriculated vs Target']} />
+                    <ReferenceLine x={0} stroke="#1E2A44" strokeWidth={1.5} />
+                    <Bar dataKey="variance" radius={0}>
+                      {varianceData.map((d, i) => (
+                        <Cell key={i} fill={d.variance < 0 ? '#8B2635' : d.variance > 0 ? '#3D5023' : '#78716C'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="px-3 pt-2 pb-3" style={{ borderTop: '1px solid #F0E9D6' }}>
+              <div className="text-[10px] uppercase tracking-[0.15em] font-medium mb-1" style={{ color: '#3D5023' }}>From Enrolled</div>
+              <div style={{ height: 215 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={varianceData} layout="vertical" margin={{ top: 4, right: 30, left: 50, bottom: 4 }}>
+                    <CartesianGrid horizontal={false} stroke="#E8E0CC" />
+                    <XAxis type="number" tick={{ fontSize: 10, fill: '#78716C' }} axisLine={{ stroke: '#D4C9B0' }} />
+                    <YAxis type="category" dataKey="program" tick={{ fontSize: 11, fill: '#44403C', fontFamily: 'IBM Plex Sans' }} axisLine={{ stroke: '#D4C9B0' }} width={70} />
+                    <Tooltip contentStyle={{ background: '#FFFFFF', border: '1px solid #D4C9B0', fontSize: 12 }} formatter={(v) => [v == null ? 'not tracked' : v, 'Enrolled vs Target']} />
+                    <ReferenceLine x={0} stroke="#1E2A44" strokeWidth={1.5} />
+                    <Bar dataKey="varEnr" radius={0}>
+                      {varianceData.map((d, i) => (
+                        <Cell key={i} fill={d.varEnr == null ? '#D4C9B0' : d.varEnr < 0 ? '#8B2635' : d.varEnr > 0 ? '#3D5023' : '#78716C'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
         </section>
