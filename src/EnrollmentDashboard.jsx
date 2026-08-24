@@ -160,6 +160,67 @@ function StatCard({ label, value, sublabel, accent, icon: Icon, highlight }) {
   );
 }
 
+function DeltaCell({ v }) {
+  if (v == null) return <td className="px-3 py-3 text-right tabular text-stone-300">—</td>;
+  const color = v < 0 ? '#8B2635' : v > 0 ? '#3D5023' : '#A8A29E';
+  return (
+    <td className="px-3 py-3 text-right tabular" style={{ color, fontWeight: v !== 0 ? 500 : 400 }}>
+      {v > 0 ? '+' : ''}{v}
+    </td>
+  );
+}
+
+function ChangeTable({ title, subtitle, accent, keys, rows }) {
+  return (
+    <section className="bg-white border border-stone-200 mb-8">
+      <div className="px-5 py-4" style={{ borderBottom: '1px solid #E8E0CC', background: accent ? '#F6F8F1' : 'transparent' }}>
+        <h2 className="display text-lg" style={{ fontFamily: 'Fraunces, Georgia, serif', fontWeight: 500, color: accent || '#1C1917' }}>
+          {title}
+        </h2>
+        <p className="text-xs text-stone-500 mt-0.5">{subtitle}</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-[10px] uppercase tracking-wider text-stone-500" style={{ borderBottom: '1px solid #E8E0CC' }}>
+              <th className="px-4 py-2.5 text-left font-medium">Program</th>
+              <th className="px-3 py-2.5 text-right font-medium">Δ Total</th>
+              <th className="px-3 py-2.5 text-right font-medium">Δ Summer</th>
+              <th className="px-3 py-2.5 text-right font-medium">Δ Fall</th>
+              <th className="px-4 py-2.5 text-right font-medium">Δ Variance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(r => (
+              <tr key={r.program} className={r.program === 'Total' ? '' : 'hover:bg-stone-50'}
+                  style={{
+                    borderBottom: '1px solid #F0E9D6',
+                    background: r.program === 'Total' ? '#FAF6EC' : 'transparent',
+                    borderTop: r.program === 'Total' ? '2px solid #1E2A44' : 'none',
+                  }}>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    {r.program !== 'Total' && (
+                      <div className="w-1 h-4" style={{ background: PROGRAM_COLORS[r.program] }} />
+                    )}
+                    <span className={r.program === 'Total' ? 'font-semibold text-stone-900' : 'font-medium text-stone-900'}>
+                      {r.program}
+                    </span>
+                  </div>
+                </td>
+                <DeltaCell v={r[keys.total]} />
+                <DeltaCell v={r[keys.summer]} />
+                <DeltaCell v={r[keys.fall]} />
+                <DeltaCell v={r[keys.variance]} />
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 function VarianceBadge({ value }) {
   if (value == null) {
     return <span className="text-stone-300 text-xs">—</span>;
@@ -369,6 +430,7 @@ export default function EnrollmentDashboard() {
   // Change analysis: latest vs previous, per program, key metrics
   const changeRows = useMemo(() => {
     if (!latest || !previous) return [];
+    const d = (a, b) => (a == null || b == null) ? null : a - b;
     return PROGRAM_ORDER.concat(['Total']).map(prog => {
       const cur = latest.rows.find(r => r.program === prog);
       const prv = previous.rows.find(r => r.program === prog);
@@ -378,8 +440,12 @@ export default function EnrollmentDashboard() {
         matTotal: cur.matTotal - prv.matTotal,
         matSummer: cur.matSummer - prv.matSummer,
         matFall: cur.matFall - prv.matFall,
+        enrTotal: d(cur.enrTotal, prv.enrTotal),
+        enrSummer: d(cur.enrSummer, prv.enrSummer),
+        enrFall: d(cur.enrFall, prv.enrFall),
         admTotal: cur.admTotal - prv.admTotal,
         variance: cur.variance - prv.variance,
+        varEnr: d(cur.varEnr, prv.varEnr),
       };
     }).filter(Boolean);
   }, [latest, previous]);
@@ -392,6 +458,25 @@ export default function EnrollmentDashboard() {
       return r ? { program: p, variance: r.variance, varEnr: r.varEnr, target: r.target, matriculated: r.matTotal, enrolled: r.enrTotal } : null;
     }).filter(Boolean);
   }, [latest]);
+
+  // Variance over time, per program, for the two line charts
+  const varTrendData = useMemo(() => snapshots.map(s => {
+    const row = { date: s.date, _label: fmtShortDate(s.date) };
+    for (const prog of PROGRAM_ORDER) {
+      const r = s.rows.find(rr => rr.program === prog);
+      row[prog] = r ? r.variance : null;
+    }
+    return row;
+  }), [snapshots]);
+
+  const varEnrTrendData = useMemo(() => snapshots.map(s => {
+    const row = { date: s.date, _label: fmtShortDate(s.date) };
+    for (const prog of PROGRAM_ORDER) {
+      const r = s.rows.find(rr => rr.program === prog);
+      row[prog] = r ? r.varEnr : null;
+    }
+    return row;
+  }), [snapshots]);
 
   // Data quality alerts
   const dqAlerts = snapshots.filter(s => s.dataQualityNote);
@@ -554,8 +639,8 @@ export default function EnrollmentDashboard() {
         )}
 
         {/* Current state table + Trend chart side by side */}
-        <section className="grid lg:grid-cols-5 gap-6 mb-8">
-          <div className="lg:col-span-3 bg-white border border-stone-200">
+        <section className="mb-8">
+          <div className="bg-white border border-stone-200">
             <div className="px-5 py-4" style={{ borderBottom: '1px solid #E8E0CC' }}>
               <h2 className="display text-lg text-stone-900" style={{ fontFamily: 'Fraunces, Georgia, serif', fontWeight: 500 }}>
                 Current State by Program
@@ -618,54 +703,96 @@ export default function EnrollmentDashboard() {
             </div>
           </div>
 
-          <div className="lg:col-span-2 bg-white border border-stone-200">
-            <div className="px-5 py-4 flex items-start justify-between" style={{ borderBottom: '1px solid #E8E0CC' }}>
-              <div>
-                <h2 className="display text-lg text-stone-900" style={{ fontFamily: 'Fraunces, Georgia, serif', fontWeight: 500 }}>
-                  Variance vs Target
-                </h2>
-                <p className="text-xs text-stone-500 mt-0.5">Latest snapshot, by program</p>
-              </div>
-            </div>
+        </section>
 
-            <div className="px-3 pt-3 pb-1">
-              <div className="text-[10px] uppercase tracking-[0.15em] font-medium mb-1" style={{ color: '#1E2A44' }}>From Matriculated</div>
-              <div style={{ height: 215 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={varianceData} layout="vertical" margin={{ top: 4, right: 30, left: 50, bottom: 4 }}>
-                    <CartesianGrid horizontal={false} stroke="#E8E0CC" />
-                    <XAxis type="number" tick={{ fontSize: 10, fill: '#78716C' }} axisLine={{ stroke: '#D4C9B0' }} />
-                    <YAxis type="category" dataKey="program" tick={{ fontSize: 11, fill: '#44403C', fontFamily: 'IBM Plex Sans' }} axisLine={{ stroke: '#D4C9B0' }} width={70} />
-                    <Tooltip contentStyle={{ background: '#FFFFFF', border: '1px solid #D4C9B0', fontSize: 12 }} formatter={(v) => [v, 'Matriculated vs Target']} />
-                    <ReferenceLine x={0} stroke="#1E2A44" strokeWidth={1.5} />
-                    <Bar dataKey="variance" radius={0}>
-                      {varianceData.map((d, i) => (
-                        <Cell key={i} fill={d.variance < 0 ? '#8B2635' : d.variance > 0 ? '#3D5023' : '#78716C'} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+        {/* Latest snapshot: two variance bar charts side by side */}
+        <section className="grid md:grid-cols-2 gap-6 mb-8">
+          <div className="bg-white border border-stone-200">
+            <div className="px-5 py-4" style={{ borderBottom: '1px solid #E8E0CC' }}>
+              <h2 className="display text-lg text-stone-900" style={{ fontFamily: 'Fraunces, Georgia, serif', fontWeight: 500 }}>Variance from Matriculated</h2>
+              <p className="text-xs text-stone-500 mt-0.5">Matriculated minus target, latest snapshot</p>
             </div>
+            <div className="p-4" style={{ height: 340 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={varianceData} layout="vertical" margin={{ top: 10, right: 30, left: 50, bottom: 5 }}>
+                  <CartesianGrid horizontal={false} stroke="#E8E0CC" />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: '#78716C' }} axisLine={{ stroke: '#D4C9B0' }} />
+                  <YAxis type="category" dataKey="program" tick={{ fontSize: 11, fill: '#44403C' }} axisLine={{ stroke: '#D4C9B0' }} width={70} />
+                  <Tooltip contentStyle={{ background: '#FFFFFF', border: '1px solid #D4C9B0', fontSize: 12 }} formatter={(v) => [v, 'Matriculated vs Target']} />
+                  <ReferenceLine x={0} stroke="#1E2A44" strokeWidth={1.5} />
+                  <Bar dataKey="variance" radius={0}>
+                    {varianceData.map((d, i) => (<Cell key={i} fill={d.variance < 0 ? '#8B2635' : d.variance > 0 ? '#3D5023' : '#78716C'} />))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
 
-            <div className="px-3 pt-2 pb-3" style={{ borderTop: '1px solid #F0E9D6' }}>
-              <div className="text-[10px] uppercase tracking-[0.15em] font-medium mb-1" style={{ color: '#3D5023' }}>From Enrolled</div>
-              <div style={{ height: 215 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={varianceData} layout="vertical" margin={{ top: 4, right: 30, left: 50, bottom: 4 }}>
-                    <CartesianGrid horizontal={false} stroke="#E8E0CC" />
-                    <XAxis type="number" tick={{ fontSize: 10, fill: '#78716C' }} axisLine={{ stroke: '#D4C9B0' }} />
-                    <YAxis type="category" dataKey="program" tick={{ fontSize: 11, fill: '#44403C', fontFamily: 'IBM Plex Sans' }} axisLine={{ stroke: '#D4C9B0' }} width={70} />
-                    <Tooltip contentStyle={{ background: '#FFFFFF', border: '1px solid #D4C9B0', fontSize: 12 }} formatter={(v) => [v == null ? 'not tracked' : v, 'Enrolled vs Target']} />
-                    <ReferenceLine x={0} stroke="#1E2A44" strokeWidth={1.5} />
-                    <Bar dataKey="varEnr" radius={0}>
-                      {varianceData.map((d, i) => (
-                        <Cell key={i} fill={d.varEnr == null ? '#D4C9B0' : d.varEnr < 0 ? '#8B2635' : d.varEnr > 0 ? '#3D5023' : '#78716C'} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+          <div className="bg-white border border-stone-200">
+            <div className="px-5 py-4" style={{ borderBottom: '1px solid #E8E0CC', background: '#F6F8F1' }}>
+              <h2 className="display text-lg" style={{ fontFamily: 'Fraunces, Georgia, serif', fontWeight: 500, color: '#3D5023' }}>Variance from Enrolled</h2>
+              <p className="text-xs text-stone-500 mt-0.5">Enrolled minus target, latest snapshot</p>
+            </div>
+            <div className="p-4" style={{ height: 340 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={varianceData} layout="vertical" margin={{ top: 10, right: 30, left: 50, bottom: 5 }}>
+                  <CartesianGrid horizontal={false} stroke="#E8E0CC" />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: '#78716C' }} axisLine={{ stroke: '#D4C9B0' }} />
+                  <YAxis type="category" dataKey="program" tick={{ fontSize: 11, fill: '#44403C' }} axisLine={{ stroke: '#D4C9B0' }} width={70} />
+                  <Tooltip contentStyle={{ background: '#FFFFFF', border: '1px solid #D4C9B0', fontSize: 12 }} formatter={(v) => [v == null ? 'not tracked' : v, 'Enrolled vs Target']} />
+                  <ReferenceLine x={0} stroke="#1E2A44" strokeWidth={1.5} />
+                  <Bar dataKey="varEnr" radius={0}>
+                    {varianceData.map((d, i) => (<Cell key={i} fill={d.varEnr == null ? '#D4C9B0' : d.varEnr < 0 ? '#8B2635' : d.varEnr > 0 ? '#3D5023' : '#78716C'} />))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </section>
+
+        {/* Over time: two variance line charts side by side */}
+        <section className="grid md:grid-cols-2 gap-6 mb-8">
+          <div className="bg-white border border-stone-200">
+            <div className="px-5 py-4" style={{ borderBottom: '1px solid #E8E0CC' }}>
+              <h2 className="display text-lg text-stone-900" style={{ fontFamily: 'Fraunces, Georgia, serif', fontWeight: 500 }}>Variance to Matriculated over time</h2>
+              <p className="text-xs text-stone-500 mt-0.5">Each line is one program. The dashed zero line is on target.</p>
+            </div>
+            <div className="p-4" style={{ height: 360 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={varTrendData} margin={{ top: 10, right: 30, left: 0, bottom: 30 }}>
+                  <CartesianGrid strokeDasharray="2 4" stroke="#E8E0CC" />
+                  <XAxis dataKey="_label" tick={{ fontSize: 9, fill: '#57534E' }} axisLine={{ stroke: '#D4C9B0' }} angle={-40} textAnchor="end" height={50} interval={Math.max(0, Math.floor(varTrendData.length / 12))} />
+                  <YAxis tick={{ fontSize: 11, fill: '#57534E' }} axisLine={{ stroke: '#D4C9B0' }} />
+                  <Tooltip contentStyle={{ background: '#FFFFFF', border: '1px solid #D4C9B0', fontSize: 12 }} labelStyle={{ fontWeight: 600, marginBottom: 4 }} />
+                  <Legend wrapperStyle={{ fontSize: 11, paddingTop: 10 }} iconType="line" />
+                  <ReferenceLine y={0} stroke="#1E2A44" strokeWidth={1} strokeDasharray="3 3" />
+                  {PROGRAM_ORDER.map(prog => (
+                    <Line key={prog} type="monotone" dataKey={prog} stroke={PROGRAM_COLORS[prog]} strokeWidth={2} dot={{ r: 2, strokeWidth: 0, fill: PROGRAM_COLORS[prog] }} activeDot={{ r: 4 }} />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-white border border-stone-200">
+            <div className="px-5 py-4" style={{ borderBottom: '1px solid #E8E0CC', background: '#F6F8F1' }}>
+              <h2 className="display text-lg" style={{ fontFamily: 'Fraunces, Georgia, serif', fontWeight: 500, color: '#3D5023' }}>Variance to Enrolled over time</h2>
+              <p className="text-xs text-stone-500 mt-0.5">Begins when Enrolled tracking started. Dashed zero line is on target.</p>
+            </div>
+            <div className="p-4" style={{ height: 360 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={varEnrTrendData} margin={{ top: 10, right: 30, left: 0, bottom: 30 }}>
+                  <CartesianGrid strokeDasharray="2 4" stroke="#E8E0CC" />
+                  <XAxis dataKey="_label" tick={{ fontSize: 9, fill: '#57534E' }} axisLine={{ stroke: '#D4C9B0' }} angle={-40} textAnchor="end" height={50} interval={Math.max(0, Math.floor(varEnrTrendData.length / 12))} />
+                  <YAxis tick={{ fontSize: 11, fill: '#57534E' }} axisLine={{ stroke: '#D4C9B0' }} />
+                  <Tooltip contentStyle={{ background: '#FFFFFF', border: '1px solid #D4C9B0', fontSize: 12 }} labelStyle={{ fontWeight: 600, marginBottom: 4 }} />
+                  <Legend wrapperStyle={{ fontSize: 11, paddingTop: 10 }} iconType="line" />
+                  <ReferenceLine y={0} stroke="#1E2A44" strokeWidth={1} strokeDasharray="3 3" />
+                  {PROGRAM_ORDER.map(prog => (
+                    <Line key={prog} type="monotone" dataKey={prog} stroke={PROGRAM_COLORS[prog]} strokeWidth={2} dot={{ r: 2.5, strokeWidth: 0, fill: PROGRAM_COLORS[prog] }} activeDot={{ r: 4 }} />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </section>
@@ -745,59 +872,20 @@ export default function EnrollmentDashboard() {
 
         {/* Change analysis */}
         {changeRows.length > 0 && (
-          <section className="bg-white border border-stone-200 mb-8">
-            <div className="px-5 py-4" style={{ borderBottom: '1px solid #E8E0CC' }}>
-              <h2 className="display text-lg text-stone-900" style={{ fontFamily: 'Fraunces, Georgia, serif', fontWeight: 500 }}>
-                Period over Period Change
-              </h2>
-              <p className="text-xs text-stone-500 mt-0.5">
-                Movement from {fmtDate(previous.date)} to {fmtDate(latest.date)}. Negative on Matriculated rows indicates melt.
-              </p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-[10px] uppercase tracking-wider text-stone-500" style={{ borderBottom: '1px solid #E8E0CC' }}>
-                    <th className="px-4 py-2.5 text-left font-medium">Program</th>
-                    <th className="px-3 py-2.5 text-right font-medium">Δ Matric. Total</th>
-                    <th className="px-3 py-2.5 text-right font-medium">Δ Summer</th>
-                    <th className="px-3 py-2.5 text-right font-medium">Δ Fall</th>
-                    <th className="px-3 py-2.5 text-right font-medium">Δ Pending</th>
-                    <th className="px-4 py-2.5 text-right font-medium">Δ Variance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {changeRows.map(r => (
-                    <tr key={r.program} className={r.program === 'Total' ? '' : 'hover:bg-stone-50'}
-                        style={{
-                          borderBottom: '1px solid #F0E9D6',
-                          background: r.program === 'Total' ? '#FAF6EC' : 'transparent',
-                          borderTop: r.program === 'Total' ? '2px solid #1E2A44' : 'none',
-                        }}>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          {r.program !== 'Total' && (
-                            <div className="w-1 h-4" style={{ background: PROGRAM_COLORS[r.program] }} />
-                          )}
-                          <span className={r.program === 'Total' ? 'font-semibold text-stone-900' : 'font-medium text-stone-900'}>
-                            {r.program}
-                          </span>
-                        </div>
-                      </td>
-                      {['matTotal', 'matSummer', 'matFall', 'admTotal', 'variance'].map(k => {
-                        const v = r[k];
-                        const color = v < 0 ? '#8B2635' : v > 0 ? '#3D5023' : '#A8A29E';
-                        return (
-                          <td key={k} className="px-3 py-3 text-right tabular" style={{ color, fontWeight: v !== 0 ? 500 : 400 }}>
-                            {v > 0 ? '+' : ''}{v}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <section className="grid lg:grid-cols-2 gap-6 mb-8">
+            <ChangeTable
+              title="Period over Period — Matriculation"
+              subtitle={`Movement from ${fmtDate(previous.date)} to ${fmtDate(latest.date)}. Negative means melt.`}
+              keys={{ total: 'matTotal', summer: 'matSummer', fall: 'matFall', variance: 'variance' }}
+              rows={changeRows}
+            />
+            <ChangeTable
+              title="Period over Period — Enrollment"
+              subtitle={`Movement from ${fmtDate(previous.date)} to ${fmtDate(latest.date)}. Dash means enrolled not tracked that period.`}
+              accent="#3D5023"
+              keys={{ total: 'enrTotal', summer: 'enrSummer', fall: 'enrFall', variance: 'varEnr' }}
+              rows={changeRows}
+            />
           </section>
         )}
 
